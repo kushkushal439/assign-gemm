@@ -12,9 +12,9 @@
 
 namespace solution {
     // Block sizes tuned for L1/L2 cache
-    constexpr int BLOCK_M = 32;  // multiple of 8 for AVX2
-    constexpr int BLOCK_N = 32;
-    constexpr int BLOCK_K = 32;
+    constexpr int BLOCK_M = 64;  // multiple of 8 for AVX2
+    constexpr int BLOCK_N = 128;
+    constexpr int BLOCK_K = 256;
     constexpr int VEC_SIZE = 16;
 
     std::string compute(const std::string &m1_path,
@@ -45,7 +45,7 @@ namespace solution {
         std::fill_n(result, sizeC, 0.0f);
 
         // Parallelize the outermost loop with OpenMP
-        #pragma omp parallel for
+        #pragma omp parallel for schedule(static, 1)
         for (int i = 0; i < n; i += BLOCK_M) {
             // Thread-local scratch buffers to avoid conflicts
             float packA[BLOCK_M * BLOCK_K] __attribute__((aligned(32)));

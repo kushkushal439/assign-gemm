@@ -1,6 +1,6 @@
-add_library(studentlib mainserver.cpp)
+add_library(studentlib mainthreaded.cpp)
 target_include_directories(studentlib PUBLIC ${CMAKE_SOURCE_DIR}/include)
-target_compile_options(studentlib PRIVATE -O3 -march=native)
+target_compile_options(studentlib PRIVATE -O3 -march=native -funroll-loops -ffast-math -fopenmp)
 
 # Proper OpenMP support
 find_package(OpenMP REQUIRED)
