@@ -72,7 +72,7 @@ namespace solution {
 
                     // Micro-kernel: process the packed blocks
                     for (int ii = i; ii < i_max; ++ii) {
-                        for (int jj = j; jj < j_max; jj += 8) {
+                        for (int jj = j; jj < j_max; jj += 16) {
                             __m512 c_vec = _mm512_loadu_ps(&result[static_cast<size_t>(ii) * m + jj]);
 
                             for (int ll = kk; ll < k_max; ++ll) {
