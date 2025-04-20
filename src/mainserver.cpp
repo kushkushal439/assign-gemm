@@ -12,8 +12,8 @@
 
 namespace solution {
     // Block sizes tuned for L1/L2 cache
-    constexpr int BLOCK_M = 64;  // multiple of 8 for AVX2
-    constexpr int BLOCK_N = 256;
+    constexpr int BLOCK_M = 32;  // multiple of 8 for AVX2
+    constexpr int BLOCK_N = 32;
     constexpr int BLOCK_K = 128;
     constexpr int VEC_SIZE = 16;
 
