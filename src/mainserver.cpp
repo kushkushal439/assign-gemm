@@ -29,9 +29,9 @@ namespace solution {
         size_t sizeB = static_cast<size_t>(k) * m;
         size_t sizeC = static_cast<size_t>(n) * m;
 
-        float *m1 = static_cast<float*>(aligned_alloc(64, sizeof(float) * sizeA));
-        float *m2 = static_cast<float*>(aligned_alloc(64, sizeof(float) * sizeB));
-        float *result = static_cast<float*>(aligned_alloc(64, sizeof(float) * sizeC));
+        float *m1 = static_cast<float*>(aligned_alloc(32, sizeof(float) * sizeA));
+        float *m2 = static_cast<float*>(aligned_alloc(32, sizeof(float) * sizeB));
+        float *result = static_cast<float*>(aligned_alloc(32, sizeof(float) * sizeC));
         m1_fs.read(reinterpret_cast<char*>(m1), sizeof(float) * sizeA);
         m2_fs.read(reinterpret_cast<char*>(m2), sizeof(float) * sizeB);
         m1_fs.close(); m2_fs.close();
@@ -47,8 +47,8 @@ namespace solution {
         #pragma omp parallel for
         for (int i = 0; i < n; i += BLOCK_M) {
             // Thread-local scratch buffers to avoid conflicts
-            float packA[BLOCK_M * BLOCK_K] __attribute__((aligned(64)));
-            float packB[BLOCK_K * BLOCK_N] __attribute__((aligned(64)));
+            float packA[BLOCK_M * BLOCK_K] __attribute__((aligned(32)));
+            float packB[BLOCK_K * BLOCK_N] __attribute__((aligned(32)));
 
             int i_max = std::min(i + BLOCK_M, n);
             for (int kk = 0; kk < k; kk += BLOCK_K) {
