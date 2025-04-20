@@ -12,9 +12,9 @@
 
 namespace solution {
     // Block sizes tuned for L1/L2 cache
-    constexpr int BLOCK_M = 64;  // multiple of 8 for AVX2
-    constexpr int BLOCK_N = 64;
-    constexpr int BLOCK_K = 64;
+    constexpr int BLOCK_M = 32;  // multiple of 8 for AVX2
+    constexpr int BLOCK_N = 32;
+    constexpr int BLOCK_K = 32;
 
     std::string compute(const std::string &m1_path,
                         const std::string &m2_path,
@@ -73,16 +73,16 @@ namespace solution {
                     // Micro-kernel: process the packed blocks
                     for (int ii = i; ii < i_max; ++ii) {
                         for (int jj = j; jj < j_max; jj += 8) {
-                            __m256 c_vec = _mm256_loadu_ps(&result[static_cast<size_t>(ii) * m + jj]);
+                            __m512 c_vec = _mm512_loadu_ps(&result[static_cast<size_t>(ii) * m + jj]);
 
                             for (int ll = kk; ll < k_max; ++ll) {
-                                __m256 a_vec = _mm256_set1_ps(packA[(ii - i) * BLOCK_K + (ll - kk)]);
-                                __m256 b_vec = _mm256_load_ps(&packB[(ll - kk) * BLOCK_N + (jj - j)]);
-                                c_vec = _mm256_fmadd_ps(a_vec, b_vec, c_vec);
+                                __m512 a_vec = _mm512_set1_ps(packA[(ii - i) * BLOCK_K + (ll - kk)]);
+                                __m512 b_vec = _mm512_load_ps(&packB[(ll - kk) * BLOCK_N + (jj - j)]);
+                                c_vec = _mm512_fmadd_ps(a_vec, b_vec, c_vec);
                             }
 
                             // Store back to C (unaligned)
-                            _mm256_storeu_ps(&result[static_cast<size_t>(ii) * m + jj], c_vec);
+                            _mm512_storeu_ps(&result[static_cast<size_t>(ii) * m + jj], c_vec);
                         }
                     }
                 }
