@@ -7,4 +7,4 @@ mkdir build
 cd build
 cmake .. && make -j
 cd ..
-./build/bin/tester 2048 2048 2048 111
+./build/bin/tester 1024 1024 1024 111
