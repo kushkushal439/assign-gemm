@@ -1,5 +1,5 @@
 #pragma GCC optimize("O3,unroll-loops")
-#pragma GCC target("avx512f,avx512cd,avx512bw,avx512dq,avx512vl,bmi,bmi2,lzcnt,popcnt")
+#pragma GCC target("avx2,avx512f,avx512cd,avx512bw,avx512dq,avx512vl,bmi,bmi2,lzcnt,popcnt")
 
 #include <immintrin.h>
 #include <iostream>
@@ -14,7 +14,7 @@ namespace solution {
     // Block sizes tuned for L1/L2 cache
     constexpr int BLOCK_N = 64;
     constexpr int BLOCK_M = 64;  // multiple of 8 for AVX2
-    constexpr int BLOCK_K = 128;
+    constexpr int BLOCK_K = 64;
     constexpr int VEC_SIZE = 16;
 
     std::string compute(const std::string &m1_path,
@@ -45,7 +45,7 @@ namespace solution {
         std::fill_n(result, sizeC, 0.0f);
 
         // Parallelize the outermost loop with OpenMP
-        #pragma omp parallel for schedule(static, 1)
+        #pragma omp parallel for
         for (int i = 0; i < n; i += BLOCK_N) {
             // Thread-local packed buffers
             float packA[BLOCK_N * BLOCK_K] __attribute__((aligned(64))); // Use 64 for AVX-512 alignment
