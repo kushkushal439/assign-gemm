@@ -98,7 +98,7 @@ namespace solution{
 								for(int row = 0; row < Mr; ++row) {
 									if (i + row < std::min(i_c + Mc, n)) { // Check if the current row is within bounds
 										// Broadcast the scalar element A[i+row, l] to a vector
-										a_scalar[row] = _mm512_broadcast_ss(&m1.get()[(i+row)*k + l]);
+										a_scalar[row] = _mm512_set1_ps(m1.get()[(i+row)*k + l]);
 									} else {
 										// If the row is out of bounds, broadcast zero
 										a_scalar[row] = _mm512_setzero_ps();
