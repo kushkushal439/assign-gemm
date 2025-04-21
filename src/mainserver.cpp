@@ -13,8 +13,8 @@
 namespace solution {
     // Block sizes tuned for L1/L2 cache
     constexpr int BLOCK_N = 32;
-    constexpr int BLOCK_M = 64;  // multiple of 8 for AVX2
-    constexpr int BLOCK_K = 64;
+    constexpr int BLOCK_M = 32;  // multiple of 8 for AVX2
+    constexpr int BLOCK_K = 32;
     constexpr int VEC_SIZE = 16;
 
     std::string compute(const std::string &m1_path,
@@ -39,7 +39,7 @@ namespace solution {
 
         // Set number of threads based on available cores
         int num_threads = omp_get_max_threads();
-        omp_set_num_threads(num_threads);
+        omp_set_num_threads(48);
 
         // Zero initialize result
         std::fill_n(result, sizeC, 0.0f);
