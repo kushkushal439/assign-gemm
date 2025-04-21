@@ -1,5 +1,5 @@
 #pragma GCC optimize("O3,unroll-loops")
-#pragma GCC target("avx2,avx512f,avx512cd,avx512bw,avx512dq,avx512vl,bmi,bmi2,lzcnt,popcnt")
+#pragma GCC target("avx2,bmi,bmi2,lzcnt,popcnt")
 
 #include <immintrin.h>
 #include <iostream>
@@ -30,9 +30,9 @@ namespace solution {
         size_t sizeB = static_cast<size_t>(k) * m;
         size_t sizeC = static_cast<size_t>(n) * m;
 
-        float *m1 = static_cast<float*>(aligned_alloc(64, sizeof(float) * sizeA));
-        float *m2 = static_cast<float*>(aligned_alloc(64, sizeof(float) * sizeB));
-        float *result = static_cast<float*>(aligned_alloc(64, sizeof(float) * sizeC));
+        float *m1 = static_cast<float*>(aligned_alloc(32, sizeof(float) * sizeA));
+        float *m2 = static_cast<float*>(aligned_alloc(32, sizeof(float) * sizeB));
+        float *result = static_cast<float*>(aligned_alloc(32, sizeof(float) * sizeC));
         m1_fs.read(reinterpret_cast<char*>(m1), sizeof(float) * sizeA);
         m2_fs.read(reinterpret_cast<char*>(m2), sizeof(float) * sizeB);
         m1_fs.close(); m2_fs.close();
