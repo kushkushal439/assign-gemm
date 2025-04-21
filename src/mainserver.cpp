@@ -60,47 +60,37 @@ namespace solution {
                 for (int kk = 0; kk < k; kk += BLOCK_K) {
                     int k_max = std::min(kk + BLOCK_K, k);
                     for (int ii = i; ii < i_max; ++ii) {
-                        // Prefetch next line of A if helpful
-                        // _mm_prefetch((const char*)(&m1[static_cast<size_t>(ii) * k + kk + 16]), _MM_HINT_T0);
                         std::memcpy(&packA[(ii - i) * BLOCK_K], &m1[static_cast<size_t>(ii) * k + kk], sizeof(float) * (k_max - kk));
                     }
-                    for (int ll_pack = kk; ll_pack < k_max; ++ll_pack) {
-                        for (int jj_pack = j; jj_pack < j_max; ++jj_pack) {
-                            // packB layout: [k_block][m_block] -> packB[inner_k * BLOCK_M + inner_j]
-                            // We want layout: [m_block / VEC_SIZE][k_block][VEC_SIZE]
-                            // Or simpler: packB[inner_k * BLOCK_M + inner_j] -> packB[inner_j * BLOCK_K + inner_k] (transposed)
-                            // Let's try the simple transpose first: packB[inner_j * BLOCK_K + inner_k]
-                            packB[(jj_pack - j) * BLOCK_K + (ll_pack - kk)] = m2[static_cast<size_t>(ll_pack) * m + jj_pack];
-                        }
-                        // Prefetch next row of B if helpful
-                        // _mm_prefetch((const char*)(&m2[static_cast<size_t>(ll_pack + 1) * m + j]), _MM_HINT_T0);
+                    for (int ll = kk; ll < k_max; ++ll) {
+                        std::memcpy(&packB[(ll - kk) * BLOCK_M], &m2[static_cast<size_t>(ll) * m + j], sizeof(float) * (j_max - j));
                     }
 
-                    // Micro-kernel: Accumulate into temp_C_block
+                    // Pack B transposed for better micro-kernel access pattern
+                    for (int jj_pack = j; jj_pack < j_max; jj_pack += VEC_SIZE) {
+                        for (int ll_pack = kk; ll_pack < k_max; ++ll_pack) {
+                            for (int v = 0; v < VEC_SIZE && jj_pack + v < j_max; ++v) {
+                                // Packing B elements for optimal vectorized access
+                                packB[((jj_pack - j)/VEC_SIZE) * BLOCK_K * VEC_SIZE + (ll_pack - kk) * VEC_SIZE + v] = 
+                                    m2[static_cast<size_t>(ll_pack) * m + (jj_pack + v)];
+                            }
+                        }
+                    }
+
+                    // Micro-kernel
                     for (int ii = i; ii < i_max; ++ii) {
                         for (int jj = j; jj < j_max; jj += VEC_SIZE) {
+                            // Load current value from temp_C_block
                             __m512 c_vec = _mm512_load_ps(&temp_C_block[(ii - i) * BLOCK_M + (jj - j)]);
 
-                            int ll = kk;
-                            // Unroll inner loop (example: unroll by 2)
-                            for (; ll + 1 < k_max; ll += 2) {
-                                __m512 a_vec0 = _mm512_set1_ps(packA[(ii - i) * BLOCK_K + (ll - kk)]);
-                                // Load from OPTIMIZED packB - now contiguous access pattern for b_vec!
-                                // Address calculation depends on the chosen packing layout. For simple transpose:
-                                __m512 b_vec0 = _mm512_load_ps(&packB[(jj - j) * BLOCK_K + (ll - kk)]); // Load 16 floats for ll=0
-                                c_vec = _mm512_fmadd_ps(a_vec0, b_vec0, c_vec);
-
-                                __m512 a_vec1 = _mm512_set1_ps(packA[(ii - i) * BLOCK_K + (ll + 1 - kk)]);
-                                __m512 b_vec1 = _mm512_load_ps(&packB[(jj - j) * BLOCK_K + (ll + 1 - kk)]); // Load 16 floats for ll=1
-                                c_vec = _mm512_fmadd_ps(a_vec1, b_vec1, c_vec);
-                            }
-                            // Handle remaining iterations
-                            for (; ll < k_max; ++ll) {
+                            // Accumulate contributions from A and B blocks
+                            for (int ll = kk; ll < k_max; ++ll) {
                                 __m512 a_vec = _mm512_set1_ps(packA[(ii - i) * BLOCK_K + (ll - kk)]);
-                                __m512 b_vec = _mm512_load_ps(&packB[(jj - j) * BLOCK_K + (ll - kk)]);
+                                __m512 b_vec = _mm512_load_ps(&packB[((jj - j)/VEC_SIZE) * BLOCK_K * VEC_SIZE + (ll - kk) * VEC_SIZE]);
                                 c_vec = _mm512_fmadd_ps(a_vec, b_vec, c_vec);
                             }
 
+                            // Store accumulated value back to temp_C_block
                             _mm512_store_ps(&temp_C_block[(ii - i) * BLOCK_M + (jj - j)], c_vec);
                         }
                     }
