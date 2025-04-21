@@ -14,7 +14,7 @@ namespace solution {
     // Block sizes tuned for L1/L2 cache
     constexpr int BLOCK_N = 64;
     constexpr int BLOCK_M = 64;  // multiple of 8 for AVX2
-    constexpr int BLOCK_K = 64;
+    constexpr int BLOCK_K = 128;
     constexpr int VEC_SIZE = 16;
 
     std::string compute(const std::string &m1_path,
@@ -30,9 +30,9 @@ namespace solution {
         size_t sizeB = static_cast<size_t>(k) * m;
         size_t sizeC = static_cast<size_t>(n) * m;
 
-        float *m1 = static_cast<float*>(aligned_alloc(32, sizeof(float) * sizeA));
-        float *m2 = static_cast<float*>(aligned_alloc(32, sizeof(float) * sizeB));
-        float *result = static_cast<float*>(aligned_alloc(32, sizeof(float) * sizeC));
+        float *m1 = static_cast<float*>(aligned_alloc(64, sizeof(float) * sizeA));
+        float *m2 = static_cast<float*>(aligned_alloc(64, sizeof(float) * sizeB));
+        float *result = static_cast<float*>(aligned_alloc(64, sizeof(float) * sizeC));
         m1_fs.read(reinterpret_cast<char*>(m1), sizeof(float) * sizeA);
         m2_fs.read(reinterpret_cast<char*>(m2), sizeof(float) * sizeB);
         m1_fs.close(); m2_fs.close();
@@ -45,7 +45,7 @@ namespace solution {
         std::fill_n(result, sizeC, 0.0f);
 
         // Parallelize the outermost loop with OpenMP
-        #pragma omp parallel for
+        #pragma omp parallel for schedule(static, 1)
         for (int i = 0; i < n; i += BLOCK_N) {
             // Thread-local packed buffers
             float packA[BLOCK_N * BLOCK_K] __attribute__((aligned(64))); // Use 64 for AVX-512 alignment
