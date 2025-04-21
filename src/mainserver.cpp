@@ -65,15 +65,27 @@ namespace solution {
                     // Micro-kernel: process the packed blocks
                     for (int ii = i; ii < i_max; ++ii) {
                         for (int jj = j; jj < j_max; jj += VEC_SIZE) {
+                            // Use __m512 or __m512 depending on your target
                             __m512 c_vec = _mm512_loadu_ps(&result[static_cast<size_t>(ii) * m + jj]);
 
-                            for (int ll = kk; ll < k_max; ++ll) {
+                            int ll = kk;
+                            // Unroll by 2 (adjust if k_max - kk is often small)
+                            for (; ll + 1 < k_max; ll += 2) {
+                                __m512 a_vec0 = _mm512_set1_ps(packA[(ii - i) * BLOCK_K + (ll - kk)]);
+                                __m512 b_vec0 = _mm512_load_ps(&packB[(ll - kk) * BLOCK_N + (jj - j)]); // Assuming packB is aligned
+                                c_vec = _mm512_fmadd_ps(a_vec0, b_vec0, c_vec);
+
+                                __m512 a_vec1 = _mm512_set1_ps(packA[(ii - i) * BLOCK_K + (ll + 1 - kk)]);
+                                __m512 b_vec1 = _mm512_load_ps(&packB[(ll + 1 - kk) * BLOCK_N + (jj - j)]);
+                                c_vec = _mm512_fmadd_ps(a_vec1, b_vec1, c_vec);
+                            }
+                            // Handle remaining iterations if k_max - kk is odd
+                            for (; ll < k_max; ++ll) {
                                 __m512 a_vec = _mm512_set1_ps(packA[(ii - i) * BLOCK_K + (ll - kk)]);
                                 __m512 b_vec = _mm512_load_ps(&packB[(ll - kk) * BLOCK_N + (jj - j)]);
                                 c_vec = _mm512_fmadd_ps(a_vec, b_vec, c_vec);
                             }
 
-                            // Store back to C (unaligned)
                             _mm512_storeu_ps(&result[static_cast<size_t>(ii) * m + jj], c_vec);
                         }
                     }
