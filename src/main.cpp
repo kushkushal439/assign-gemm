@@ -8,12 +8,14 @@
 #include <cstring>
 #include <filesystem>
 #include <string>
+#include <omp.h>
 
 namespace solution {
     // Block sizes tuned for L1/L2 cache
-    constexpr int BLOCK_M = 32;  // multiple of 8 for AVX2
     constexpr int BLOCK_N = 32;
+    constexpr int BLOCK_M = 32;  // multiple of 8 for AVX2
     constexpr int BLOCK_K = 32;
+    constexpr int VEC_SIZE = 16;
 
     std::string compute(const std::string &m1_path,
                         const std::string &m2_path,
@@ -35,37 +37,34 @@ namespace solution {
         m2_fs.read(reinterpret_cast<char*>(m2), sizeof(float) * sizeB);
         m1_fs.close(); m2_fs.close();
 
+        // Set number of threads based on available cores
+        int num_threads = omp_get_max_threads();
+        omp_set_num_threads(num_threads);
+
         // Zero initialize result
         std::fill_n(result, sizeC, 0.0f);
 
-        for (int i = 0; i < n; i += BLOCK_M) {
-            int i_max = std::min(i + BLOCK_M, n);
+        // Parallelize the outermost loop with OpenMP
+        #pragma omp parallel for
+        for (int i = 0; i < n; i += BLOCK_N) {
+            float packA[BLOCK_N * BLOCK_K] __attribute__((aligned(32)));
+            float packB[BLOCK_K * BLOCK_M] __attribute__((aligned(32)));
+
+            int i_max = std::min(i + BLOCK_N, n);
             for (int kk = 0; kk < k; kk += BLOCK_K) {
                 int k_max = std::min(kk + BLOCK_K, k);
-                for (int j = 0; j < m; j += BLOCK_N) {
-                    int j_max = std::min(j + BLOCK_N, m);
-
-                    // Scratch buffers (packed, aligned)
-                    float packA[BLOCK_M * BLOCK_K] __attribute__((aligned(32)));
-                    float packB[BLOCK_K * BLOCK_N] __attribute__((aligned(32)));
-
-                    // Pack A block (rows i..i_max, cols kk..k_max)
+                for (int j = 0; j < m; j += BLOCK_M) {
+                    int j_max = std::min(j + BLOCK_M, m);
                     for (int ii = i; ii < i_max; ++ii) {
-                        std::memcpy(&packA[(ii - i) * BLOCK_K],
-                                    &m1[static_cast<size_t>(ii) * k + kk],
-                                    sizeof(float) * (k_max - kk));
+                        std::memcpy(&packA[(ii - i) * BLOCK_K], &m1[static_cast<size_t>(ii) * k + kk], sizeof(float) * (k_max - kk));
                     }
-
-                    // Pack B block (cols j..j_max, rows kk..k_max)
                     for (int ll = kk; ll < k_max; ++ll) {
-                        std::memcpy(&packB[(ll - kk) * BLOCK_N],
-                                    &m2[static_cast<size_t>(ll) * m + j],
-                                    sizeof(float) * (j_max - j));
+                        std::memcpy(&packB[(ll - kk) * BLOCK_M], &m2[static_cast<size_t>(ll) * m + j], sizeof(float) * (j_max - j));
                     }
 
                     // Micro-kernel: process the packed blocks
                     for (int ii = i; ii < i_max; ++ii) {
-                        for (int jj = j; jj < j_max; jj += 8) {
+                        for (int jj = j; jj < j_max; jj += VEC_SIZE) {
                             __m256 c_vec = _mm256_loadu_ps(&result[static_cast<size_t>(ii) * m + jj]);
 
                             for (int ll = kk; ll < k_max; ++ll) {
