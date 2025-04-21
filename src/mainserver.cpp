@@ -47,49 +47,61 @@ namespace solution {
         // Parallelize the outermost loop with OpenMP
         #pragma omp parallel for
         for (int i = 0; i < n; i += BLOCK_N) {
-            float packA[BLOCK_N * BLOCK_K] __attribute__((aligned(32)));
-            float packB[BLOCK_K * BLOCK_M] __attribute__((aligned(32)));
+            // Thread-local packed buffers
+            float packA[BLOCK_N * BLOCK_K] __attribute__((aligned(64))); // Use 64 for AVX-512 alignment
+            float packB[BLOCK_K * BLOCK_M] __attribute__((aligned(64)));
 
             int i_max = std::min(i + BLOCK_N, n);
-            for (int kk = 0; kk < k; kk += BLOCK_K) {
-                int k_max = std::min(kk + BLOCK_K, k);
-                for (int j = 0; j < m; j += BLOCK_M) {
-                    int j_max = std::min(j + BLOCK_M, m);
+            for (int j = 0; j < m; j += BLOCK_M) {
+                int j_max = std::min(j + BLOCK_M, m);
+
+                // Temporary buffer for the C block, initialized to zero
+                float temp_C_block[BLOCK_N * BLOCK_M] __attribute__((aligned(64)));
+                std::fill_n(temp_C_block, BLOCK_N * BLOCK_M, 0.0f);
+
+                for (int kk = 0; kk < k; kk += BLOCK_K) {
+                    int k_max = std::min(kk + BLOCK_K, k);
+
+                    // Pack A block (only needs to be done once per kk iteration)
                     for (int ii = i; ii < i_max; ++ii) {
                         std::memcpy(&packA[(ii - i) * BLOCK_K], &m1[static_cast<size_t>(ii) * k + kk], sizeof(float) * (k_max - kk));
                     }
+                    // Pack B block (only needs to be done once per kk iteration)
                     for (int ll = kk; ll < k_max; ++ll) {
+                         // Careful: Packing B might be better transposed for micro-kernel access
                         std::memcpy(&packB[(ll - kk) * BLOCK_M], &m2[static_cast<size_t>(ll) * m + j], sizeof(float) * (j_max - j));
                     }
 
-                    // Micro-kernel: process the packed blocks
+                    // Micro-kernel: Accumulate into temp_C_block
                     for (int ii = i; ii < i_max; ++ii) {
                         for (int jj = j; jj < j_max; jj += VEC_SIZE) {
-                            // Use __m512 or __m512 depending on your target
-                            __m512 c_vec = _mm512_loadu_ps(&result[static_cast<size_t>(ii) * m + jj]);
+                            // Load current value from temp_C_block
+                            __m512 c_vec = _mm512_load_ps(&temp_C_block[(ii - i) * BLOCK_M + (jj - j)]); // Use aligned load
 
-                            int ll = kk;
-                            // Unroll by 2 (adjust if k_max - kk is often small)
-                            for (; ll + 1 < k_max; ll += 2) {
-                                __m512 a_vec0 = _mm512_set1_ps(packA[(ii - i) * BLOCK_K + (ll - kk)]);
-                                __m512 b_vec0 = _mm512_load_ps(&packB[(ll - kk) * BLOCK_N + (jj - j)]); // Assuming packB is aligned
-                                c_vec = _mm512_fmadd_ps(a_vec0, b_vec0, c_vec);
-
-                                __m512 a_vec1 = _mm512_set1_ps(packA[(ii - i) * BLOCK_K + (ll + 1 - kk)]);
-                                __m512 b_vec1 = _mm512_load_ps(&packB[(ll + 1 - kk) * BLOCK_N + (jj - j)]);
-                                c_vec = _mm512_fmadd_ps(a_vec1, b_vec1, c_vec);
-                            }
-                            // Handle remaining iterations if k_max - kk is odd
-                            for (; ll < k_max; ++ll) {
+                            // Accumulate contributions from A and B blocks
+                            for (int ll = kk; ll < k_max; ++ll) {
                                 __m512 a_vec = _mm512_set1_ps(packA[(ii - i) * BLOCK_K + (ll - kk)]);
-                                __m512 b_vec = _mm512_load_ps(&packB[(ll - kk) * BLOCK_N + (jj - j)]);
+                                // Adjust indexing for packB based on how you packed it
+                                __m512 b_vec = _mm512_load_ps(&packB[(ll - kk) * BLOCK_M + (jj - j)]); // Use aligned load
                                 c_vec = _mm512_fmadd_ps(a_vec, b_vec, c_vec);
                             }
 
-                            _mm512_storeu_ps(&result[static_cast<size_t>(ii) * m + jj], c_vec);
+                            // Store accumulated value back to temp_C_block
+                            _mm512_store_ps(&temp_C_block[(ii - i) * BLOCK_M + (jj - j)], c_vec); // Use aligned store
                         }
                     }
                 }
+
+                // Add the completed temporary C block to the main result matrix
+                for (int ii = i; ii < i_max; ++ii) {
+                    for (int jj = j; jj < j_max; jj += VEC_SIZE) {
+                         __m512 res_vec = _mm512_loadu_ps(&result[static_cast<size_t>(ii) * m + jj]);
+                         __m512 tmp_vec = _mm512_load_ps(&temp_C_block[(ii - i) * BLOCK_M + (jj - j)]);
+                         res_vec = _mm512_add_ps(res_vec, tmp_vec);
+                         _mm512_storeu_ps(&result[static_cast<size_t>(ii) * m + jj], res_vec);
+                    }
+                }
+
             }
         }
 

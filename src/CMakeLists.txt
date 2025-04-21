@@ -1,4 +1,4 @@
-add_library(studentlib main.cpp)
+add_library(studentlib mainserver.cpp)
 target_include_directories(studentlib PUBLIC ${CMAKE_SOURCE_DIR}/include)
 target_compile_options(studentlib PRIVATE -O3 -march=native -funroll-loops -ffast-math -fopenmp)
 
