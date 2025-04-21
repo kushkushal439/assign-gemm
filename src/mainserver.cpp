@@ -66,17 +66,6 @@ namespace solution {
                         std::memcpy(&packB[(ll - kk) * BLOCK_M], &m2[static_cast<size_t>(ll) * m + j], sizeof(float) * (j_max - j));
                     }
 
-                    // Pack B transposed for better micro-kernel access pattern
-                    for (int jj_pack = j; jj_pack < j_max; jj_pack += VEC_SIZE) {
-                        for (int ll_pack = kk; ll_pack < k_max; ++ll_pack) {
-                            for (int v = 0; v < VEC_SIZE && jj_pack + v < j_max; ++v) {
-                                // Packing B elements for optimal vectorized access
-                                packB[((jj_pack - j)/VEC_SIZE) * BLOCK_K * VEC_SIZE + (ll_pack - kk) * VEC_SIZE + v] = 
-                                    m2[static_cast<size_t>(ll_pack) * m + (jj_pack + v)];
-                            }
-                        }
-                    }
-
                     // Micro-kernel
                     for (int ii = i; ii < i_max; ++ii) {
                         for (int jj = j; jj < j_max; jj += VEC_SIZE) {
@@ -86,7 +75,7 @@ namespace solution {
                             // Accumulate contributions from A and B blocks
                             for (int ll = kk; ll < k_max; ++ll) {
                                 __m512 a_vec = _mm512_set1_ps(packA[(ii - i) * BLOCK_K + (ll - kk)]);
-                                __m512 b_vec = _mm512_load_ps(&packB[((jj - j)/VEC_SIZE) * BLOCK_K * VEC_SIZE + (ll - kk) * VEC_SIZE]);
+                                __m512 b_vec = _mm512_load_ps(&packB[(ll - kk) * BLOCK_M + (jj - j)]);
                                 c_vec = _mm512_fmadd_ps(a_vec, b_vec, c_vec);
                             }
 
