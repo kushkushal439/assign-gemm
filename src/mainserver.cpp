@@ -30,8 +30,8 @@ namespace solution {
         size_t sizeB = static_cast<size_t>(k) * m;
         size_t sizeC = static_cast<size_t>(n) * m;
 
-        float *m1 = static_cast<float*>(aligned_alloc(32, sizeof(float) * sizeA));
-        float *m2 = static_cast<float*>(aligned_alloc(32, sizeof(float) * sizeB));
+        float *m1 = static_cast<float*>(aligned_alloc(64, sizeof(float) * sizeA));
+        float *m2 = static_cast<float*>(aligned_alloc(64, sizeof(float) * sizeB));
         float *result = static_cast<float*>(aligned_alloc(32, sizeof(float) * sizeC));
         m1_fs.read(reinterpret_cast<char*>(m1), sizeof(float) * sizeA);
         m2_fs.read(reinterpret_cast<char*>(m2), sizeof(float) * sizeB);
@@ -62,8 +62,15 @@ namespace solution {
                     for (int ii = i; ii < i_max; ++ii) {
                         std::memcpy(&packA[(ii - i) * BLOCK_K], &m1[static_cast<size_t>(ii) * k + kk], sizeof(float) * (k_max - kk));
                     }
-                    for (int ll = kk; ll < k_max; ++ll) {
-                        std::memcpy(&packB[(ll - kk) * BLOCK_M], &m2[static_cast<size_t>(ll) * m + j], sizeof(float) * (j_max - j));
+                    // REPLACE WITH OPTIMIZED PACKING
+                    // This creates a layout where elements used together in the inner loop are stored contiguously
+                    for (int jj_outer = j; jj_outer < j_max; jj_outer += VEC_SIZE) {
+                        for (int ll = kk; ll < k_max; ++ll) {
+                            for (int jj_inner = 0; jj_inner < VEC_SIZE && jj_outer + jj_inner < j_max; ++jj_inner) {
+                                packB[((jj_outer - j) / VEC_SIZE) * (BLOCK_K * VEC_SIZE) + (ll - kk) * VEC_SIZE + jj_inner] = 
+                                    m2[static_cast<size_t>(ll) * m + (jj_outer + jj_inner)];
+                            }
+                        }
                     }
 
                     // Micro-kernel
@@ -75,8 +82,20 @@ namespace solution {
                             // Accumulate contributions from A and B blocks
                             for (int ll = kk; ll < k_max; ++ll) {
                                 __m512 a_vec = _mm512_set1_ps(packA[(ii - i) * BLOCK_K + (ll - kk)]);
-                                __m512 b_vec = _mm512_load_ps(&packB[(ll - kk) * BLOCK_M + (jj - j)]);
+                                // Update this line in your micro-kernel
+                                __m512 b_vec = _mm512_load_ps(&packB[((jj - j) / VEC_SIZE) * (BLOCK_K * VEC_SIZE) + (ll - kk) * VEC_SIZE]);
                                 c_vec = _mm512_fmadd_ps(a_vec, b_vec, c_vec);
+
+                                // In the unrolled micro-kernel, add prefetches
+                                // Prefetch next B elements
+                                _mm_prefetch(
+                                    (const char*)(&packB[((jj - j) / VEC_SIZE) * (BLOCK_K * VEC_SIZE) + (ll + 8 < k_max - kk ? ll + 8 : ll) * VEC_SIZE]), 
+                                    _MM_HINT_T0);
+                                
+                                // Prefetch next A elements  
+                                _mm_prefetch(
+                                    (const char*)(&packA[(ii - i) * BLOCK_K + (ll + 8 < k_max - kk ? ll + 8 : ll)]), 
+                                    _MM_HINT_T0);
                             }
 
                             // Store accumulated value back to temp_C_block
