@@ -15,7 +15,7 @@ namespace solution {
     constexpr int BLOCK_N = 32;
     constexpr int BLOCK_M = 32;  // multiple of 8 for AVX2
     constexpr int BLOCK_K = 32;
-    constexpr int VEC_SIZE = 16;
+    constexpr int VEC_SIZE = 8;
 
     std::string compute(const std::string &m1_path,
                         const std::string &m2_path,
