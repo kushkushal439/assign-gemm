@@ -12,7 +12,7 @@
 
 namespace solution {
     // Block sizes tuned for L1/L2 cache
-    constexpr int BLOCK_N = 64;
+    constexpr int BLOCK_N = 64; // m,n,k = 196, 128, 128
     constexpr int BLOCK_M = 64;
     constexpr int BLOCK_K = 64;
     constexpr int VEC_SIZE = 16;
@@ -69,11 +69,10 @@ namespace solution {
                     // Micro-kernel
                     for (int ii = i; ii < i_max; ++ii) {
                         for (int jj = j; jj < j_max; jj += VEC_SIZE) {
-                            // Load current value from temp_C_block
                             __m512 c_vec = _mm512_load_ps(&temp_C_block[(ii - i) * BLOCK_M + (jj - j)]);
 
-                            // Accumulate contributions from A and B blocks
                             for (int ll = kk; ll < k_max; ++ll) {
+                                // unroll 4 times
                                 __m512 a_vec = _mm512_set1_ps(packA[(ii - i) * BLOCK_K + (ll - kk)]);
                                 __m512 b_vec = _mm512_load_ps(&packB[(ll - kk) * BLOCK_M + (jj - j)]);
                                 c_vec = _mm512_fmadd_ps(a_vec, b_vec, c_vec);
@@ -106,6 +105,10 @@ namespace solution {
         free(m1);
         free(m2);
         free(result);
+
+        // collapse
+        // avx512 tune to 8 rows 16 columns
+        // 
 
         return sol_path;
     }
