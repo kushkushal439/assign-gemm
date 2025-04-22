@@ -64,8 +64,7 @@ namespace solution
 
                 for (int kk = 0; kk < k; kk += BLOCK_K)
                 {
-                    // int k_max = std::min(kk + BLOCK_K, k);
-                    int k_max = kk + BLOCK_K;
+                    int k_max = std::min(kk + BLOCK_K, k);
                     for (int ii = i; ii < i_max; ++ii)
                     {
                         std::memcpy(&packA[(ii - i) * BLOCK_K], &m1[static_cast<size_t>(ii) * k + kk], sizeof(float) * (k_max - kk));
