@@ -13,8 +13,8 @@
 namespace solution
 {
     // Block sizes tuned for L1/L2 cache
-    constexpr int BLOCK_N = 128;  // Multiple of 8
-    constexpr int BLOCK_M = 128;  // Multiple of 16
+    constexpr int BLOCK_N = 96;  // Multiple of 8
+    constexpr int BLOCK_M = 96;  // Multiple of 16
     constexpr int BLOCK_K = 196; // Larger K block for better reuse
     constexpr int VEC_SIZE = 16; // AVX-512 width
 
