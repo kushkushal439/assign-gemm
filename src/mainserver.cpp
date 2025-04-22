@@ -57,13 +57,15 @@ namespace solution
             int i_max = std::min(i + BLOCK_N, n);
             for (int j = 0; j < m; j += BLOCK_M)
             {
-                int j_max = std::min(j + BLOCK_M, m);
+                // int j_max = std::min(j + BLOCK_M, m);
+                int j_max = j + BLOCK_M;
                 float temp_C_block[BLOCK_N * BLOCK_M] __attribute__((aligned(64)));
-                std::fill_n(temp_C_block, BLOCK_N * BLOCK_M, 0.0f);
+                // std::fill_n(temp_C_block, BLOCK_N * BLOCK_M, 0.0f);
 
                 for (int kk = 0; kk < k; kk += BLOCK_K)
                 {
-                    int k_max = std::min(kk + BLOCK_K, k);
+                    // int k_max = std::min(kk + BLOCK_K, k);
+                    int k_max = kk + BLOCK_K;
                     for (int ii = i; ii < i_max; ++ii)
                     {
                         std::memcpy(&packA[(ii - i) * BLOCK_K], &m1[static_cast<size_t>(ii) * k + kk], sizeof(float) * (k_max - kk));
@@ -147,37 +149,6 @@ namespace solution
                                 __m512 a_vec7_1 = _mm512_set1_ps(packA[(ii + 7 - i) * BLOCK_K + (ll + 1 - kk)]);
                                 c_vec7 = _mm512_fmadd_ps(a_vec7_1, b_vec1, c_vec7);
                             }
-
-                            // Handle remaining K iterations
-                            for (; ll < k_max; ++ll)
-                            {
-                                __m512 b_vec = _mm512_load_ps(&packB[(ll - kk) * BLOCK_M + (jj - j)]);
-
-                                __m512 a_vec0 = _mm512_set1_ps(packA[(ii - i) * BLOCK_K + (ll - kk)]);
-                                c_vec0 = _mm512_fmadd_ps(a_vec0, b_vec, c_vec0);
-
-                                __m512 a_vec1 = _mm512_set1_ps(packA[(ii + 1 - i) * BLOCK_K + (ll - kk)]);
-                                c_vec1 = _mm512_fmadd_ps(a_vec1, b_vec, c_vec1);
-
-                                __m512 a_vec2 = _mm512_set1_ps(packA[(ii + 2 - i) * BLOCK_K + (ll - kk)]);
-                                c_vec2 = _mm512_fmadd_ps(a_vec2, b_vec, c_vec2);
-
-                                __m512 a_vec3 = _mm512_set1_ps(packA[(ii + 3 - i) * BLOCK_K + (ll - kk)]);
-                                c_vec3 = _mm512_fmadd_ps(a_vec3, b_vec, c_vec3);
-
-                                __m512 a_vec4 = _mm512_set1_ps(packA[(ii + 4 - i) * BLOCK_K + (ll - kk)]);
-                                c_vec4 = _mm512_fmadd_ps(a_vec4, b_vec, c_vec4);
-
-                                __m512 a_vec5 = _mm512_set1_ps(packA[(ii + 5 - i) * BLOCK_K + (ll - kk)]);
-                                c_vec5 = _mm512_fmadd_ps(a_vec5, b_vec, c_vec5);
-
-                                __m512 a_vec6 = _mm512_set1_ps(packA[(ii + 6 - i) * BLOCK_K + (ll - kk)]);
-                                c_vec6 = _mm512_fmadd_ps(a_vec6, b_vec, c_vec6);
-
-                                __m512 a_vec7 = _mm512_set1_ps(packA[(ii + 7 - i) * BLOCK_K + (ll - kk)]);
-                                c_vec7 = _mm512_fmadd_ps(a_vec7, b_vec, c_vec7);
-                            }
-
                             // Store results back
                             _mm512_store_ps(&temp_C_block[(ii - i) * BLOCK_M + (jj - j)], c_vec0);
                             _mm512_store_ps(&temp_C_block[(ii + 1 - i) * BLOCK_M + (jj - j)], c_vec1);
