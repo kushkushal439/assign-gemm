@@ -59,7 +59,7 @@ namespace solution
             {
                 int j_max = std::min(j + BLOCK_M, m);
                 float temp_C_block[BLOCK_N * BLOCK_M] __attribute__((aligned(64)));
-                std::fill_n(temp_C_block, BLOCK_N * BLOCK_M, 0.0f);
+                // std::fill_n(temp_C_block, BLOCK_N * BLOCK_M, 0.0f);
 
                 for (int kk = 0; kk < k; kk += BLOCK_K)
                 {
