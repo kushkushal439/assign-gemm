@@ -45,7 +45,7 @@ namespace solution
         omp_set_num_threads(num_threads);
 
         // Zero initialize result
-        std::fill_n(result, sizeC, 0.0f);
+        // std::fill_n(result, sizeC, 0.0f);
 
         #pragma omp parallel for
         for (int i = 0; i < n; i += BLOCK_N)
