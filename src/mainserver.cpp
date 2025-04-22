@@ -13,9 +13,9 @@
 namespace solution
 {
     // Block sizes tuned for L1/L2 cache
-    constexpr int BLOCK_N = 128;  // Multiple of 8
-    constexpr int BLOCK_M = 128;  // Multiple of 16
-    constexpr int BLOCK_K = 196; // Larger K block for better reuse
+    constexpr int BLOCK_N = 64;  // Multiple of 8
+    constexpr int BLOCK_M = 64;  // Multiple of 16
+    constexpr int BLOCK_K = 128; // Larger K block for better reuse
     constexpr int VEC_SIZE = 16; // AVX-512 width
 
     std::string compute(const std::string &m1_path,
@@ -47,16 +47,15 @@ namespace solution
         // Zero initialize result
         // std::fill_n(result, sizeC, 0.0f);
 
-        #pragma omp parallel for
+        #pragma omp parallel for collapse(2) schedule(static)
         for (int i = 0; i < n; i += BLOCK_N)
         {
-            // Thread-local packed buffers
-            float packA[BLOCK_N * BLOCK_K] __attribute__((aligned(64))); // Use 64 for AVX-512 alignment
-            float packB[BLOCK_K * BLOCK_M] __attribute__((aligned(64)));
-
-            int i_max = std::min(i + BLOCK_N, n);
             for (int j = 0; j < m; j += BLOCK_M)
             {
+                int i_max = std::min(i + BLOCK_N, n);
+                // Thread-local packed buffers
+                float packA[BLOCK_N * BLOCK_K] __attribute__((aligned(64))); // Use 64 for AVX-512 alignment
+                float packB[BLOCK_K * BLOCK_M] __attribute__((aligned(64)));
                 int j_max = std::min(j + BLOCK_M, m);
                 float temp_C_block[BLOCK_N * BLOCK_M] __attribute__((aligned(64)));
                 std::fill_n(temp_C_block, BLOCK_N * BLOCK_M, 0.0f);
