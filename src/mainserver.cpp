@@ -47,17 +47,16 @@ namespace solution
         // Zero initialize result
         std::fill_n(result, sizeC, 0.0f);
 
-        // Parallelize the outermost loop with OpenMP
-#pragma omp parallel for collapse(2)
+        #pragma omp parallel for collapse(2)
         for (int i = 0; i < n; i += BLOCK_N)
         {
+            // Thread-local packed buffers
+            float packA[BLOCK_N * BLOCK_K] __attribute__((aligned(64))); // Use 64 for AVX-512 alignment
+            float packB[BLOCK_K * BLOCK_M] __attribute__((aligned(64)));
+
             int i_max = std::min(i + BLOCK_N, n);
             for (int j = 0; j < m; j += BLOCK_M)
             {
-                // Thread-local packed buffers
-                float packA[BLOCK_N * BLOCK_K] __attribute__((aligned(64))); // Use 64 for AVX-512 alignment
-                float packB[BLOCK_K * BLOCK_M] __attribute__((aligned(64)));
-
                 int j_max = std::min(j + BLOCK_M, m);
                 float temp_C_block[BLOCK_N * BLOCK_M] __attribute__((aligned(64)));
                 std::fill_n(temp_C_block, BLOCK_N * BLOCK_M, 0.0f);
