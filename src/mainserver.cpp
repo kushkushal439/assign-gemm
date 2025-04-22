@@ -70,7 +70,7 @@ namespace solution {
                     // Process 8 rows at a time
                     for (int ii = i; ii < i_max; ii += 8) {
                         // Make sure we don't go out of bounds
-                        if (ii + 8 <= i_max) {
+                        // if (ii + 8 <= i_max) {
                             for (int jj = j; jj < j_max; jj += VEC_SIZE) {
                                 // Load 8 rows of accumulator vectors
                                 __m512 c_vec0 = _mm512_load_ps(&temp_C_block[(ii - i) * BLOCK_M + (jj - j)]);
@@ -179,22 +179,22 @@ namespace solution {
                                 _mm512_store_ps(&temp_C_block[(ii + 6 - i) * BLOCK_M + (jj - j)], c_vec6);
                                 _mm512_store_ps(&temp_C_block[(ii + 7 - i) * BLOCK_M + (jj - j)], c_vec7);
                             }
-                        } else {
-                            // Handle remaining rows (fewer than 8)
-                            for (int ii_rem = ii; ii_rem < i_max; ++ii_rem) {
-                                for (int jj = j; jj < j_max; jj += VEC_SIZE) {
-                                    __m512 c_vec = _mm512_load_ps(&temp_C_block[(ii_rem - i) * BLOCK_M + (jj - j)]);
+                        // } else {
+                        //     // Handle remaining rows (fewer than 8)
+                        //     for (int ii_rem = ii; ii_rem < i_max; ++ii_rem) {
+                        //         for (int jj = j; jj < j_max; jj += VEC_SIZE) {
+                        //             __m512 c_vec = _mm512_load_ps(&temp_C_block[(ii_rem - i) * BLOCK_M + (jj - j)]);
                                     
-                                    for (int ll = kk; ll < k_max; ++ll) {
-                                        __m512 a_vec = _mm512_set1_ps(packA[(ii_rem - i) * BLOCK_K + (ll - kk)]);
-                                        __m512 b_vec = _mm512_load_ps(&packB[(ll - kk) * BLOCK_M + (jj - j)]);
-                                        c_vec = _mm512_fmadd_ps(a_vec, b_vec, c_vec);
-                                    }
+                        //             for (int ll = kk; ll < k_max; ++ll) {
+                        //                 __m512 a_vec = _mm512_set1_ps(packA[(ii_rem - i) * BLOCK_K + (ll - kk)]);
+                        //                 __m512 b_vec = _mm512_load_ps(&packB[(ll - kk) * BLOCK_M + (jj - j)]);
+                        //                 c_vec = _mm512_fmadd_ps(a_vec, b_vec, c_vec);
+                        //             }
                                     
-                                    _mm512_store_ps(&temp_C_block[(ii_rem - i) * BLOCK_M + (jj - j)], c_vec);
-                                }
-                            }
-                        }
+                        //             _mm512_store_ps(&temp_C_block[(ii_rem - i) * BLOCK_M + (jj - j)], c_vec);
+                        //         }
+                        //     }
+                        // }
                     }
                 }
 
