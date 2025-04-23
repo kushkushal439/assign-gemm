@@ -37,8 +37,8 @@ namespace solution
         float *result = static_cast<float *>(aligned_alloc(64, sizeof(float) * sizeC));
         m1_fs.read(reinterpret_cast<char *>(m1), sizeof(float) * sizeA);
         m2_fs.read(reinterpret_cast<char *>(m2), sizeof(float) * sizeB);
-        m1_fs.close();
-        m2_fs.close();
+        // m1_fs.close();
+        // m2_fs.close();
 
         // Set number of threads based on available cores
         int num_threads = omp_get_max_threads();
@@ -176,12 +176,12 @@ namespace solution
 
         // Write output matrix
         sol_fs.write(reinterpret_cast<const char *>(result), sizeof(float) * sizeC);
-        sol_fs.close();
+        // sol_fs.close();
 
         // Free aligned buffers
-        free(m1);
-        free(m2);
-        free(result);
+        // free(m1);
+        // free(m2);
+        // free(result);
 
 
         return sol_path;
