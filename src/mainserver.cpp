@@ -22,12 +22,10 @@ namespace solution
                         const std::string &m2_path,
                         int n, int k, int m)
     {
-        // Prepare file I/O
         std::string sol_path = std::filesystem::temp_directory_path() / "student_sol.dat";
         std::ofstream sol_fs(sol_path, std::ios::binary);
         std::ifstream m1_fs(m1_path, std::ios::binary), m2_fs(m2_path, std::ios::binary);
 
-        // Aligned allocations for A, B, and result
         size_t sizeA = static_cast<size_t>(n) * k;
         size_t sizeB = static_cast<size_t>(k) * m;
         size_t sizeC = static_cast<size_t>(n) * m;
@@ -44,9 +42,6 @@ namespace solution
         int num_threads = omp_get_max_threads();
         omp_set_num_threads(num_threads);
 
-        // Zero initialize result
-        // std::fill_n(result, sizeC, 0.0f);
-
         #pragma omp parallel for collapse(2) schedule(static)
         for (int i = 0; i < n; i += BLOCK_N)
         {
@@ -54,7 +49,7 @@ namespace solution
             {
                 int i_max = std::min(i + BLOCK_N, n);
                 // Thread-local packed buffers
-                float packA[BLOCK_N * BLOCK_K] __attribute__((aligned(64))); // Use 64 for AVX-512 alignment
+                float packA[BLOCK_N * BLOCK_K] __attribute__((aligned(64)));
                 float packB[BLOCK_K * BLOCK_M] __attribute__((aligned(64)));
                 int j_max = std::min(j + BLOCK_M, m);
                 float temp_C_block[BLOCK_N * BLOCK_M] __attribute__((aligned(64)));
@@ -78,7 +73,6 @@ namespace solution
                     {
                         for (int jj = j; jj < j_max; jj += VEC_SIZE)
                         {
-                            // Load 8 rows of accumulator vectors
                             __m512 c_vec0 = _mm512_load_ps(&temp_C_block[(ii - i) * BLOCK_M + (jj - j)]);
                             __m512 c_vec1 = _mm512_load_ps(&temp_C_block[(ii + 1 - i) * BLOCK_M + (jj - j)]);
                             __m512 c_vec2 = _mm512_load_ps(&temp_C_block[(ii + 2 - i) * BLOCK_M + (jj - j)]);
