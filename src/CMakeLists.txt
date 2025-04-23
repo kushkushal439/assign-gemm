@@ -27,5 +27,3 @@ endif()
 
 # Important: Also add LTO to link flags
 target_link_options(studentlib PRIVATE -flto)
-
-pragma GCC target("avx512f,avx512cd,avx512vl,avx512bw,avx512dq,fma")
