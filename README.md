@@ -1,2 +1,19 @@
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/JCCq7F24)
-# GEMM_template
+# GEMM - General Matrix Multiplication
+
+High-performance dense **GEMM** kernel (course assignment, SPP - Systems Programming for Performance).
+
+## Implementation
+
+Single-threaded blocked GEMM tuned for the CPU:
+
+- **Blocked algorithm** with tile sizes `BLOCK_M=128`, `BLOCK_N=128`, `BLOCK_K=192` for better cache reuse
+- **AVX-512 SIMD** intrinsics (`_mm512_*`) with 16-wide vector loads/stores and FMA
+- **Register blocking** - 8 accumulator rows kept in registers per iteration
+- **Loop unrolling** for better instruction pipelining
+- **64-byte aligned allocations** for AVX-512 alignment
+
+## Build & Run
+
+```bash
+bash runner_script.sh   # or use the provided CMake build
+```
